@@ -1,4 +1,4 @@
-class Number < Struct.new( :value ) 
+class Number < Struct.new( :value )
 
   def reducible?
     false
@@ -14,7 +14,7 @@ class Number < Struct.new( :value )
 
 end
 
-class Add < Struct.new( :left, :right) 
+class Add < Struct.new( :left, :right)
 
   def reducible?
     true
@@ -40,7 +40,7 @@ class Add < Struct.new( :left, :right)
 
 end
 
-class Multiply < Struct.new( :left, :right ) 
+class Multiply < Struct.new( :left, :right )
 
   def reducible?
     true
@@ -109,7 +109,7 @@ class LessThan < Struct.new( :left, :right )
 end
 
 class Variable < Struct.new( :name )
-  
+
   def to_s
     name.to_s
   end
@@ -166,7 +166,7 @@ class Assign < Struct.new( :name, :expression )
     if expression.reducible?
       [Assign.new( name, expression.reduce( environment ) ), environment]
     else
-      [DoNothing.new, environment.merge( { name: expression } )]
+      [DoNothing.new, environment.merge( { name => expression } )]
     end
   end
 
@@ -185,6 +185,61 @@ class Machine < Struct.new( :statement, :environment )
     end
 
     puts "#{statement}, #{environment}"
+  end
+
+end
+
+class If < Struct.new( :condition, :consequence, :alternative )
+
+  def to_s
+    "if ( #{condition} ) { #{consequence}  } else { #{alternative}  }"
+  end
+
+  def inspect
+    "#{self}"
+  end
+
+  def reducible?
+    true
+  end
+
+  def reduce( environment )
+    if condition.reducible?
+      [If.new(condition.reduce(environment), consequence, alternative), environment]
+    else
+      case condition
+      when Boolean.new(true)
+        [consequence, environment]
+      when Boolean.new(false)
+        [alternative, environment]
+      end
+    end
+  end
+
+end
+
+class Sequence < Struct.new( :first, :second )
+
+  def to_s
+    "#{first}; #{second}"
+  end
+
+  def inspect
+    "#{self}"
+  end
+
+  def reducible?
+    true
+  end
+
+  def reduce(environment)
+    case first
+    when DoNothing.new
+      [second, environment]
+    else
+      reduced_first, reduced_environment = first.reduce( environment )
+      [Sequence.new( reduced_first, second), reduced_environment]
+    end
   end
 
 end
