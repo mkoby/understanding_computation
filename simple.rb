@@ -12,6 +12,10 @@ class Number < Struct.new( :value )
     "#{self}"
   end
 
+  def evaluate( environment={} )
+    self
+  end
+
 end
 
 class Add < Struct.new( :left, :right)
@@ -36,6 +40,11 @@ class Add < Struct.new( :left, :right)
 
   def inspect
     "#{self}"
+  end
+
+  def evaluate( environment={} )
+    Number.new( left.evaluate( environment ).value +
+                right.evaluate( environment ).value )
   end
 
 end
@@ -64,6 +73,11 @@ class Multiply < Struct.new( :left, :right )
     "#{self}"
   end
 
+  def evaluate( environment={} )
+    Number.new( left.evaluate( environment ).value *
+                right.evaluate( environment ).value )
+  end
+
 end
 
 class Boolean < Struct.new( :value )
@@ -78,6 +92,10 @@ class Boolean < Struct.new( :value )
 
   def inspect
     "#{self}"
+  end
+
+  def evaluate( environment={} )
+    self
   end
 
 end
@@ -106,6 +124,11 @@ class LessThan < Struct.new( :left, :right )
     "#{self}"
   end
 
+  def evaluate( environment={} )
+    Boolean.new( left.evaluate( environment ).value <
+                right.evaluate( environment ).value )
+  end
+
 end
 
 class Variable < Struct.new( :name )
@@ -123,6 +146,10 @@ class Variable < Struct.new( :name )
   end
 
   def reduce( environment )
+    environment[name]
+  end
+
+  def evaluate( environment )
     environment[name]
   end
 
@@ -144,6 +171,10 @@ class DoNothing
 
   def reducible?
     false
+  end
+
+  def evaluate( environment={} )
+    environment
   end
 
 end
@@ -168,6 +199,10 @@ class Assign < Struct.new( :name, :expression )
     else
       [DoNothing.new, environment.merge( { name => expression } )]
     end
+  end
+
+  def evaluate( environment={} )
+    environment.merge( { name => expression.evaluate( environment ) } )
   end
 
 end
@@ -216,6 +251,15 @@ class If < Struct.new( :condition, :consequence, :alternative )
     end
   end
 
+  def evaluate( environment={} )
+    case condition.evaluate( environment )
+    when Boolean.new( true )
+      consequence.evaluate( environment )
+    when Boolean.new( false )
+      alternative.evaluate( environment )
+    end
+  end
+
 end
 
 class Sequence < Struct.new( :first, :second )
@@ -242,6 +286,10 @@ class Sequence < Struct.new( :first, :second )
     end
   end
 
+  def evaluate( environment={} )
+    second.evaluate( first.evaluate( environment ) )
+  end
+
 end
 
 class While < Struct.new( :condition, :body )
@@ -261,5 +309,15 @@ class While < Struct.new( :condition, :body )
   def reduce( environment )
     [If.new( condition, Sequence.new( body, self), DoNothing.new), environment]
   end
+
+  def evaluate( environment={} )
+    case condition.evaluate( environment )
+    when Boolean.new( true )
+      evaluate( body.evaluate( environment ) )
+    when Boolean.new( false )
+      environment
+    end
+  end
+
 end
 
